@@ -31,16 +31,18 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _searchTask(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        filteredTasks = allTasks;
-      } else {
-        filteredTasks = allTasks
-            .where((task) =>
-                task.title.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
-    });
+    setState(
+      () {
+        if (query.isEmpty) {
+          filteredTasks = allTasks;
+        } else {
+          filteredTasks = allTasks
+              .where((task) =>
+                  task.title.toLowerCase().contains(query.toLowerCase()))
+              .toList();
+        }
+      },
+    );
   }
 
   @override
@@ -60,10 +62,12 @@ class _SearchScreenState extends State<SearchScreen> {
           IconButton(
             icon: const Icon(Icons.close),
             onPressed: () {
-              setState(() {
-                _searchController.clear();
-                filteredTasks = allTasks;
-              });
+              setState(
+                () {
+                  _searchController.clear();
+                  filteredTasks = allTasks;
+                },
+              );
             },
           ),
         ],

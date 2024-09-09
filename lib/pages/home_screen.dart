@@ -5,6 +5,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as fln;
+// ignore: depend_on_referenced_packages
+import 'package:timezone/data/latest.dart' as tz;
+// ignore: depend_on_referenced_packages
+import 'package:timezone/timezone.dart' as tz;
 import 'package:todo_app/bloc/task_bloc.dart';
 import 'package:todo_app/bloc/task_event.dart';
 import 'package:todo_app/bloc/task_state.dart';
@@ -29,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _initializeNotifications();
     _loadTasksFromStorage();
+    tz.initializeTimeZones(); // Initialize time zones
   }
 
   void _initializeNotifications() async {
@@ -71,14 +76,62 @@ class _HomeScreenState extends State<HomeScreen> {
       List<Task> tasks = decodeTasksFromJson(tasksJson);
 
       DateTime today = DateTime.now();
+      DateTime oneWeekFromNow = today.add(const Duration(days: 7));
       bool hasTodayTask = tasks.any((task) =>
           task.dueDate.year == today.year &&
           task.dueDate.month == today.month &&
           task.dueDate.day == today.day);
 
-      if (hasTodayTask) {
-        _showNotification();
+      // Check if there are tasks due in one week
+      for (var task in tasks) {
+        if (task.dueDate.isAtSameMomentAs(oneWeekFromNow)) {
+          _scheduleNotificationForOneWeekBefore(task);
+        }
       }
+
+      if (hasTodayTask) {
+        _showNotification("Check your today's tasks", "Task Reminder");
+      }
+    }
+  }
+
+  void _scheduleNotificationForOneWeekBefore(Task task) async {
+    // Convert the due date to a TZDateTime object.
+    final scheduledDate = task.dueDate.subtract(const Duration(days: 7));
+
+    // Set the notification time to 9 AM of the calculated date.
+    final scheduleTime = tz.TZDateTime.from(
+      DateTime(
+          scheduledDate.year, scheduledDate.month, scheduledDate.day, 9, 0, 0),
+      tz.local,
+    );
+
+    // Ensure the scheduled time is in the future.
+    if (scheduleTime.isAfter(tz.TZDateTime.now(tz.local))) {
+      const fln.AndroidNotificationDetails androidPlatformChannelSpecifics =
+          fln.AndroidNotificationDetails(
+        'weekly_reminder_channel_id',
+        'Weekly Reminder',
+        channelDescription: 'Reminder for tasks due in one week',
+        importance: fln.Importance.max,
+        priority: fln.Priority.high,
+        ticker: 'Weekly Reminder',
+      );
+
+      const fln.NotificationDetails platformChannelSpecifics =
+          fln.NotificationDetails(android: androidPlatformChannelSpecifics);
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        0,
+        'Upcoming Task Reminder',
+        'You have a task due in one week: ${task.title}',
+        scheduleTime,
+        platformChannelSpecifics,
+        // ignore: deprecated_member_use
+        androidAllowWhileIdle: true,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
     }
   }
 
@@ -87,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return tasksList.map((taskJson) => Task.fromJson(taskJson)).toList();
   }
 
-  Future<void> _showNotification() async {
+  Future<void> _showNotification(String body, String title) async {
     const fln.AndroidNotificationDetails androidPlatformChannelSpecifics =
         fln.AndroidNotificationDetails(
       'your_channel_id',
@@ -97,13 +150,14 @@ class _HomeScreenState extends State<HomeScreen> {
       priority: fln.Priority.high,
       ticker: 'ticker',
     );
+
     const fln.NotificationDetails platformChannelSpecifics =
         fln.NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await flutterLocalNotificationsPlugin.show(
       0,
-      'Task Reminder',
-      "Check your today's tasks",
+      title,
+      body,
       platformChannelSpecifics,
       payload: 'Default_Sound',
     );
