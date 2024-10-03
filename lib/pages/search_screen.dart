@@ -1,8 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todo_app/bloc/task_bloc.dart';
-import 'package:todo_app/bloc/task_event.dart';
-import 'package:todo_app/bloc/task_state.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get/get.dart';
 import 'package:todo_app/models/task.dart';
 import 'package:todo_app/pages/detail_page.dart';
 
@@ -15,13 +14,14 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   List<Task> allTasks = [];
   List<Task> filteredTasks = [];
 
   @override
   void initState() {
     super.initState();
-    BlocProvider.of<TaskBloc>(context).add(LoadTasks());
+    _loadTasksFromStorage();
   }
 
   @override
@@ -30,19 +30,34 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
+  Future<void> _loadTasksFromStorage() async {
+    String? tasksJson = await _storage.read(key: 'tasks');
+
+    if (tasksJson != null) {
+      List<Task> tasks = decodeTasksFromJson(tasksJson);
+      setState(() {
+        allTasks = tasks;
+        filteredTasks = tasks;
+      });
+    }
+  }
+
+  List<Task> decodeTasksFromJson(String tasksJson) {
+    List<dynamic> tasksList = jsonDecode(tasksJson);
+    return tasksList.map((taskJson) => Task.fromJson(taskJson)).toList();
+  }
+
   void _searchTask(String query) {
-    setState(
-      () {
-        if (query.isEmpty) {
-          filteredTasks = allTasks;
-        } else {
-          filteredTasks = allTasks
-              .where((task) =>
-                  task.title.toLowerCase().contains(query.toLowerCase()))
-              .toList();
-        }
-      },
-    );
+    setState(() {
+      if (query.isEmpty) {
+        filteredTasks = allTasks;
+      } else {
+        filteredTasks = allTasks
+            .where((task) =>
+                task.title.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
   }
 
   @override
@@ -62,33 +77,17 @@ class _SearchScreenState extends State<SearchScreen> {
           IconButton(
             icon: const Icon(Icons.close),
             onPressed: () {
-              setState(
-                () {
-                  _searchController.clear();
-                  filteredTasks = allTasks;
-                },
-              );
+              setState(() {
+                _searchController.clear();
+                filteredTasks = allTasks;
+              });
             },
           ),
         ],
       ),
-      body: BlocBuilder<TaskBloc, TaskState>(
-        builder: (context, state) {
-          if (state is TaskLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is TaskLoaded) {
-            allTasks = state.tasks;
-            if (_searchController.text.isEmpty) {
-              filteredTasks = allTasks;
-            } else {
-              filteredTasks = allTasks
-                  .where((task) => task.title
-                      .toLowerCase()
-                      .contains(_searchController.text.toLowerCase()))
-                  .toList();
-            }
-
-            return ListView.builder(
+      body: filteredTasks.isEmpty
+          ? const Center(child: Text('No tasks found'))
+          : ListView.builder(
               itemCount: filteredTasks.length,
               itemBuilder: (context, index) {
                 final task = filteredTasks[index];
@@ -98,27 +97,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   trailing: Text(
                       'Priority: ${task.priority.toString().split('.').last}'),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TaskDetailScreen(
-                          task: task,
-                        ),
-                      ),
-                    );
+                    Get.to(() => TaskDetailScreen(task: task));
                   },
                 );
               },
-            );
-          } else if (state is TaskError) {
-            return Center(
-              child: Text('Error: ${state.error}'),
-            );
-          } else {
-            return const Center(child: Text('Something went wrong'));
-          }
-        },
-      ),
+            ),
     );
   }
 }

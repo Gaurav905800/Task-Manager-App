@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todo_app/controller/task_controller.dart';
 import 'package:uuid/uuid.dart';
-import 'package:todo_app/bloc/task_bloc.dart';
-import 'package:todo_app/bloc/task_event.dart';
+import 'package:get/get.dart';
 import 'package:todo_app/models/task.dart';
 
 class TaskFormScreen extends StatefulWidget {
@@ -20,8 +19,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   final _descriptionController = TextEditingController();
   PriorityNew _selectedPriority = PriorityNew.low;
   DateTime _dueDate = DateTime.now();
-
   final _formKey = GlobalKey<FormState>();
+  final TaskController taskController = Get.find();
 
   @override
   void initState() {
@@ -36,6 +35,24 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
   String _generateUniqueId() {
     return const Uuid().v4();
+  }
+
+  void _saveTask() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final task = Task(
+        id: widget.task?.id ?? _generateUniqueId(),
+        title: _titleController.text,
+        description: _descriptionController.text,
+        priority: _selectedPriority,
+        dueDate: _dueDate,
+      );
+      if (widget.task == null) {
+        taskController.addOrUpdateTask(task);
+      } else {
+        taskController.addOrUpdateTask(task);
+      }
+      Get.back();
+    }
   }
 
   @override
@@ -129,23 +146,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    final task = Task(
-                      id: widget.task?.id ?? _generateUniqueId(),
-                      title: _titleController.text,
-                      description: _descriptionController.text,
-                      priority: _selectedPriority,
-                      dueDate: _dueDate,
-                    );
-                    if (widget.task == null) {
-                      context.read<TaskBloc>().add(AddTask(task));
-                    } else {
-                      context.read<TaskBloc>().add(UpdateTask(task));
-                    }
-                    Navigator.pop(context, task);
-                  }
-                },
+                onPressed: _saveTask,
                 child: Text(widget.task == null ? 'Submit' : 'Update'),
               ),
             ],

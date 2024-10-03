@@ -1,20 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todo_app/bloc/task_bloc.dart';
-import 'package:todo_app/bloc/task_event.dart';
+import 'package:get/route_manager.dart';
 import 'package:todo_app/pages/home_screen.dart';
 
 void main() {
-  runApp(
-    MultiBlocProvider(
-      providers: [
-        BlocProvider<TaskBloc>(
-          create: (context) => TaskBloc()..add(LoadTasks()),
-        ),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -22,7 +11,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Task Manager',
       theme: ThemeData(
@@ -30,7 +19,7 @@ class MyApp extends StatelessWidget {
           seedColor: Colors.red,
         ),
       ),
-      home: const HomeScreen(),
+      home: HomeScreen(),
     );
   }
 }

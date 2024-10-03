@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:todo_app/models/task.dart';
 
 class TaskDetailScreen extends StatelessWidget {
@@ -11,6 +12,12 @@ class TaskDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(task.title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Get.back();
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
